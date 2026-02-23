@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speech Feedback - Impromptu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F7F3E8;
+      --text: #1A3C34;
+      --accent: #C4B5E8;
+      --accent-dark: #9B87CC;
+      --accent-bg: rgba(196, 181, 232, 0.18);
+      --muted: rgba(26, 60, 52, 0.45);
+      --card-bg: #ffffff;
+      --gold: #F5A623;
+      --gold-bg: rgba(245, 166, 35, 0.12);
+      --green: #2DBE6C;
+      --green-bg: rgba(45, 190, 108, 0.1);
+      --red: #E85D5D;
+    }
+
+    html, body { min-height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Nav ── */
+    .nav-bar {
+      width: 100%;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px;
+      flex-shrink: 0;
+      position: sticky; top: 0;
+      background: var(--bg);
+      z-index: 100;
+      border-bottom: 1px solid rgba(26,60,52,0.06);
+    }
+    .nav-back {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem; color: var(--text);
+      text-decoration: none; opacity: 0.6;
+      display: flex; align-items: center; gap: 6px;
+      transition: opacity 0.2s;
+    }
+    .nav-back:hover { opacity: 1; }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .brand-badge {
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'Caveat', cursive; font-size: 1.05rem;
+      color: var(--text); opacity: 0.55; pointer-events: none;
+    }
+    .brand-dot { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid currentColor; }
+
+    /* Settings Gear */
+    .btn-settings {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1.5px solid rgba(26,60,52,0.25);
+      background: transparent; color: var(--text);
+      font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s;
+    }
+    .btn-settings:hover { background: rgba(26,60,52,0.07); }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 500;
+      display: none; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 28px;
+      max-width: 420px; width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+    .modal-title {
+      font-family: 'Caveat', cursive; font-size: 1.6rem;
+      color: var(--text); margin-bottom: 8px;
+    }
+    .modal-desc {
+      font-size: 0.9rem; color: var(--muted); line-height: 1.6;
+      margin-bottom: 20px;
+    }
+    .modal-desc a { color: var(--accent-dark); }
+    .modal-label { font-size: 0.85rem; font-weight: 600; color: var(--text); margin-bottom: 6px; display: block; }
+    .modal-input {
+      width: 100%; padding: 10px 14px;
+      border: 1.5px solid rgba(26,60,52,0.2);
+      border-radius: 10px;
+      font-family: 'Inter', sans-serif; font-size: 0.9rem;
+      color: var(--text); background: var(--bg);
+      outline: none; transition: border-color 0.2s;
+      margin-bottom: 16px;
+    }
+    .modal-input:focus { border-color: var(--accent-dark); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+    .btn-modal-cancel {
+      padding: 9px 18px; border-radius: 100px;
+      border: 1.5px solid rgba(26,60,52,0.2);
+      background: transparent; color: var(--text);
+      font-size: 0.9rem; cursor: pointer;
+    }
+    .btn-modal-save {
+      padding: 9px 22px; border-radius: 100px;
+      border: none; background: var(--text); color: var(--bg);
+      font-size: 0.9rem; font-weight: 600; cursor: pointer;
+    }
+
+    /* ── Page ── */
+    .page-content {
+      flex: 1; max-width: 680px; width: 100%;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+      display: flex; flex-direction: column; gap: 20px;
+    }
+
+    /* ── Topic Card ── */
+    .topic-card {
+      text-align: center;
+      padding: 4px 0 8px;
+    }
+    .topic-label-sm {
+      font-family: 'Caveat', cursive; font-size: 1rem;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em;
+      margin-bottom: 6px;
+    }
+    .topic-main {
+      font-family: 'DM Serif Display', serif;
+      font-size: 2rem; color: var(--text); line-height: 1.25;
+    }
+
+    /* ── Section headers ── */
+    .section-title {
+      font-family: 'Caveat', cursive; font-size: 1.2rem;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
+      margin-bottom: 10px;
+    }
+
+    /* ── Transcript Card ── */
+    .card {
+      background: var(--card-bg);
+      border: 1.5px solid rgba(26,60,52,0.1);
+      border-radius: 18px;
+      padding: 20px 22px;
+    }
+    .transcript-display {
+      font-size: 0.95rem; line-height: 1.7; color: var(--text);
+      min-height: 60px;
+      white-space: pre-wrap;
+    }
+    .transcript-empty {
+      color: var(--muted); font-style: italic;
+    }
+
+    /* ── Analyze Button ── */
+    .btn-analyze {
+      width: 100%; padding: 15px;
+      border-radius: 100px;
+      border: none;
+      background: var(--text); color: var(--bg);
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem; font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      transition: background 0.18s, transform 0.14s;
+    }
+    .btn-analyze:hover:not(:disabled) { background: #2a5a4a; transform: translateY(-1px); }
+    .btn-analyze:disabled { opacity: 0.5; cursor: default; transform: none; }
+
+    .btn-need-key {
+      background: var(--accent);
+      color: var(--text);
+    }
+    .btn-need-key:hover:not(:disabled) { background: var(--accent-dark); color: white; }
+
+    /* ── Loading ── */
+    .loading-state {
+      display: none;
+      flex-direction: column; align-items: center; gap: 14px;
+      padding: 28px 0;
+    }
+    .loading-state.visible { display: flex; }
+    .loading-dots span {
+      display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent-dark);
+      animation: dotBounce 1.2s ease-in-out infinite;
+      margin: 0 3px;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes dotBounce {
+      0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+    .loading-text {
+      font-family: 'Caveat', cursive; font-size: 1.2rem; color: var(--muted);
+      text-align: center;
+    }
+
+    /* ── Coach Feedback ── */
+    .coach-section { display: none; flex-direction: column; gap: 16px; }
+    .coach-section.visible { display: flex; }
+
+    .coach-header {
+      display: flex; align-items: center; gap: 14px;
+    }
+    .coach-avatar {
+      width: 52px; height: 52px; border-radius: 50%;
+      background: var(--accent-bg);
+      border: 2px solid var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .coach-meta { display: flex; flex-direction: column; gap: 2px; }
+    .coach-name { font-weight: 600; font-size: 0.95rem; color: var(--text); }
+    .coach-role { font-size: 0.82rem; color: var(--muted); }
+
+    .feedback-text {
+      font-size: 1rem; line-height: 1.7; color: var(--text);
+    }
+    .feedback-text .cursor {
+      display: inline-block; width: 2px; height: 1em;
+      background: var(--accent-dark); animation: blink 0.8s step-end infinite;
+      vertical-align: middle; margin-left: 1px;
+    }
+    @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+
+    .strength-list, .improve-list {
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .strength-item, .improve-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      font-size: 0.92rem; line-height: 1.5; color: var(--text);
+    }
+    .item-icon { font-size: 1rem; flex-shrink: 0; margin-top: 1px; }
+
+    .pro-tip-card {
+      background: var(--accent-bg);
+      border: 1.5px solid var(--accent);
+      border-radius: 14px;
+      padding: 14px 18px;
+      display: flex; gap: 12px; align-items: flex-start;
+    }
+    .pro-tip-icon { font-size: 1.2rem; flex-shrink: 0; }
+    .pro-tip-text { font-size: 0.92rem; line-height: 1.55; color: var(--text); }
+    .pro-tip-label { font-weight: 600; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-dark); margin-bottom: 4px; }
+
+    /* ── Score Cards ── */
+    .score-header {
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 10px;
+    }
+    .overall-score-badge {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .score-circle {
+      width: 64px; height: 64px; border-radius: 50%;
+      background: var(--text);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: var(--bg);
+    }
+    .score-num { font-family: 'DM Serif Display', serif; font-size: 1.5rem; line-height: 1; }
+    .score-denom { font-size: 0.65rem; opacity: 0.7; }
+    .stars { font-size: 1.1rem; letter-spacing: 1px; }
+
+    .score-grid {
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .score-row {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .score-icon { font-size: 1.1rem; width: 26px; text-align: center; flex-shrink: 0; }
+    .score-label { font-size: 0.88rem; font-weight: 500; width: 130px; flex-shrink: 0; color: var(--text); }
+    .score-bar-wrap { flex: 1; height: 10px; background: rgba(26,60,52,0.1); border-radius: 100px; overflow: hidden; }
+    .score-bar {
+      height: 100%; border-radius: 100px;
+      background: var(--accent-dark);
+      width: 0;
+      transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .score-val { font-size: 0.82rem; font-weight: 600; width: 32px; text-align: right; flex-shrink: 0; color: var(--text); }
+
+    /* Bar colors by score */
+    .score-bar.high { background: var(--green); }
+    .score-bar.mid { background: var(--accent-dark); }
+    .score-bar.low { background: #E8A05D; }
+
+    /* ── XP / Level ── */
+    .xp-section {
+      background: var(--card-bg);
+      border-radius: 18px;
+      border: 1.5px solid rgba(26,60,52,0.1);
+      padding: 20px 22px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 14px;
+    }
+    .xp-left { display: flex; align-items: center; gap: 14px; }
+    .level-badge {
+      background: var(--text); color: var(--bg);
+      border-radius: 12px; padding: 8px 14px;
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+    }
+    .level-icon { font-size: 1.4rem; }
+    .level-name { font-family: 'Caveat', cursive; font-size: 0.9rem; letter-spacing: 0.02em; }
+    .xp-info { display: flex; flex-direction: column; gap: 4px; }
+    .xp-earned { font-family: 'Caveat', cursive; font-size: 1.6rem; color: var(--text); line-height: 1; }
+    .xp-total { font-size: 0.82rem; color: var(--muted); }
+    .xp-bar-wrap { width: 100%; height: 8px; background: rgba(26,60,52,0.1); border-radius: 100px; overflow: hidden; margin-top: 6px; }
+    .xp-bar { height: 100%; border-radius: 100px; background: var(--gold); transition: width 1.5s cubic-bezier(0.22,1,0.36,1); width: 0; }
+    .xp-next { font-size: 0.78rem; color: var(--muted); }
+
+    /* ── Badges ── */
+    .badges-wrap { display: flex; flex-wrap: wrap; gap: 10px; }
+    .badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 14px;
+      background: var(--card-bg);
+      border: 1.5px solid rgba(26,60,52,0.12);
+      border-radius: 100px;
+      font-size: 0.88rem;
+    }
+    .badge.new {
+      background: var(--gold-bg);
+      border-color: var(--gold);
+      animation: badgePop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) backwards;
+    }
+    @keyframes badgePop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .badge-icon { font-size: 1rem; }
+    .badge-name { font-weight: 500; color: var(--text); }
+    .badge-new-tag {
+      font-size: 0.68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.05em; color: var(--gold);
+    }
+    .no-badges-yet { font-size: 0.9rem; color: var(--muted); font-style: italic; }
+
+    /* ── Action Buttons ── */
+    .action-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn-secondary {
+      flex: 1; min-width: 140px;
+      padding: 13px 20px; border-radius: 100px;
+      border: 1.5px solid var(--text);
+      background: transparent; color: var(--text);
+      font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 500;
+      cursor: pointer; text-decoration: none;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.18s, transform 0.14s;
+    }
+    .btn-secondary:hover { background: rgba(26,60,52,0.06); transform: translateY(-1px); }
+    .btn-primary-action {
+      flex: 1; min-width: 140px;
+      padding: 13px 20px; border-radius: 100px;
+      border: none; background: var(--text); color: var(--bg);
+      font-family: 'Inter', sans-serif; font-size: 0.95rem; font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: background 0.18s, transform 0.14s;
+      text-decoration: none;
+    }
+    .btn-primary-action:hover { background: #2a5a4a; transform: translateY(-1px); }
+
+    /* ── Error State ── */
+    .error-card {
+      background: rgba(232,93,93,0.08);
+      border: 1.5px solid rgba(232,93,93,0.3);
+      border-radius: 14px; padding: 16px 18px;
+      font-size: 0.9rem; color: var(--text);
+      display: none;
+    }
+    .error-card.visible { display: block; }
+
+    /* ── Empty State ── */
+    .empty-state {
+      text-align: center; padding: 48px 24px;
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: 16px; }
+    .empty-title { font-family: 'Caveat', cursive; font-size: 1.8rem; margin-bottom: 8px; }
+    .empty-desc { font-size: 0.95rem; color: var(--muted); margin-bottom: 24px; line-height: 1.6; }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .score-label { width: 100px; font-size: 0.82rem; }
+      .page-content { padding: 20px 16px 48px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeSettings()">
+    <div class="modal">
+      <div class="modal-title">🔑 Add API Key</div>
+      <p class="modal-desc">
+        Add your Anthropic API key to get AI coaching feedback. Your key is stored locally in your browser and never sent anywhere except the Anthropic API.
+        <br><br>
+        Get a key at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>
+      </p>
+      <label class="modal-label" for="apiKeyInput">Anthropic API Key</label>
+      <input
+        type="password"
+        id="apiKeyInput"
+        class="modal-input"
+        placeholder="sk-ant-..."
+        autocomplete="off"
+        spellcheck="false"
+      >
+      <div class="modal-actions">
+        <button class="btn-modal-cancel" onclick="closeSettings()">Cancel</button>
+        <button class="btn-modal-save" onclick="saveApiKey()">Save Key</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Nav -->
+  <div class="nav-bar">
+    <a href="timer.html" class="nav-back" id="backBtn">← Back</a>
+    <div class="nav-right">
+      <button class="btn-settings" onclick="openSettings()" title="API Settings">⚙️</button>
+      <div class="brand-badge">Baby steps to the mic <div class="brand-dot"></div></div>
+    </div>
+  </div>
+
+  <div class="page-content" id="pageContent">
+    <!-- Filled by JS -->
+  </div>
+
+  <script>
+    // ── Storage Helpers ───────────────────────────────────────────
+    const topic = sessionStorage.getItem('speechTopic') || 'Impromptu Speaking';
+    const transcript = sessionStorage.getItem('speechTranscript') || '';
+    const duration = parseInt(sessionStorage.getItem('speechDuration') || '0');
+
+    function getApiKey() { return localStorage.getItem('anthropicApiKey') || ''; }
+    function saveApiKey() {
+      const val = document.getElementById('apiKeyInput').value.trim();
+      if (!val) return;
+      localStorage.setItem('anthropicApiKey', val);
+      closeSettings();
+      // Re-render analyze button
+      updateAnalyzeBtn();
+    }
+
+    function openSettings() {
+      document.getElementById('apiKeyInput').value = getApiKey();
+      document.getElementById('modalOverlay').classList.add('open');
+    }
+    function closeSettings() {
+      document.getElementById('modalOverlay').classList.remove('open');
+    }
+
+    // ── XP & Level System ─────────────────────────────────────────
+    const LEVELS = [
+      { name: 'Mic Newbie', icon: '🐭', threshold: 0 },
+      { name: 'Stage Dabbler', icon: '🌱', threshold: 200 },
+      { name: 'Rising Speaker', icon: '📣', threshold: 500 },
+      { name: 'Eloquent Warrior', icon: '⚔️', threshold: 1000 },
+      { name: 'Orator Supreme', icon: '👑', threshold: 2000 },
+      { name: 'Legendary Voice', icon: '🌟', threshold: 5000 },
+    ];
+
+    function getTotalXP() { return parseInt(localStorage.getItem('totalXP') || '0'); }
+    function addXP(amount) {
+      const current = getTotalXP();
+      localStorage.setItem('totalXP', current + amount);
+      return current + amount;
+    }
+    function getLevel(xp) {
+      let level = LEVELS[0];
+      for (const l of LEVELS) { if (xp >= l.threshold) level = l; }
+      return level;
+    }
+    function getNextLevel(xp) {
+      for (const l of LEVELS) { if (l.threshold > xp) return l; }
+      return null;
+    }
+
+    // ── Badge System ──────────────────────────────────────────────
+    const ALL_BADGES = [
+      { id: 'first_speech', icon: '🎤', name: 'First Speech', desc: 'Completed your first speech' },
+      { id: 'on_fire', icon: '🔥', name: 'On Fire', desc: 'Score 80+ overall' },
+      { id: 'perfect_structure', icon: '💎', name: 'Structure Master', desc: 'Score 90+ on structure' },
+      { id: 'confidence_rocket', icon: '🚀', name: 'Confidence Rocket', desc: 'Score 85+ on confidence' },
+      { id: 'word_wizard', icon: '📚', name: 'Word Wizard', desc: 'Score 90+ on vocabulary' },
+      { id: 'champion', icon: '🏆', name: 'Champion', desc: 'Score 90+ overall' },
+      { id: 'five_speeches', icon: '⚡', name: '5 Speeches!', desc: 'Complete 5 speeches' },
+      { id: 'week_streak', icon: '🌊', name: 'On a Roll', desc: 'Practice 3 days in a row' },
+    ];
+
+    function getEarnedBadges() {
+      try { return JSON.parse(localStorage.getItem('earnedBadges') || '[]'); } catch { return []; }
+    }
+    function earnBadge(id) {
+      const earned = getEarnedBadges();
+      if (earned.includes(id)) return false;
+      earned.push(id);
+      localStorage.setItem('earnedBadges', JSON.stringify(earned));
+      return true;
+    }
+    function getSpeechCount() { return parseInt(localStorage.getItem('speechCount') || '0'); }
+    function incrementSpeechCount() {
+      const c = getSpeechCount() + 1;
+      localStorage.setItem('speechCount', c);
+      return c;
+    }
+
+    function checkBadges(scores, overall) {
+      const newBadges = [];
+      const count = incrementSpeechCount();
+      if (earnBadge('first_speech')) newBadges.push('first_speech');
+      if (overall >= 80 && earnBadge('on_fire')) newBadges.push('on_fire');
+      if (overall >= 90 && earnBadge('champion')) newBadges.push('champion');
+      if (scores.structure >= 90 && earnBadge('perfect_structure')) newBadges.push('perfect_structure');
+      if (scores.confidence >= 85 && earnBadge('confidence_rocket')) newBadges.push('confidence_rocket');
+      if (scores.vocabulary >= 90 && earnBadge('word_wizard')) newBadges.push('word_wizard');
+      if (count >= 5 && earnBadge('five_speeches')) newBadges.push('five_speeches');
+      return newBadges;
+    }
+
+    function calcXP(overall, scores) {
+      let xp = 50; // base
+      xp += Math.max(0, overall - 50); // bonus per point above 50
+      return xp;
+    }
+
+    function starsFromScore(s) {
+      if (s >= 90) return '★★★★★';
+      if (s >= 75) return '★★★★☆';
+      if (s >= 60) return '★★★☆☆';
+      if (s >= 40) return '★★☆☆☆';
+      return '★☆☆☆☆';
+    }
+
+    // ── Page Render ───────────────────────────────────────────────
+    function render() {
+      const container = document.getElementById('pageContent');
+      const hasTranscript = transcript.trim().length > 0;
+      const hasKey = !!getApiKey();
+
+      if (!hasTranscript) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🎙️</div>
+            <div class="empty-title">No speech recorded yet</div>
+            <p class="empty-desc">Go back, hit record, and give your speech — then come back here for your coaching feedback.</p>
+            <a href="timer.html" class="btn-primary-action" style="max-width:240px;margin:0 auto;">← Back to Timer</a>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = `
+        <!-- Topic -->
+        <div class="topic-card">
+          <div class="topic-label-sm">Topic</div>
+          <div class="topic-main">${escHtml(topic)}</div>
+        </div>
+
+        <!-- Transcript -->
+        <div>
+          <div class="section-title">Your Speech</div>
+          <div class="card">
+            <div class="transcript-display">${escHtml(transcript)}</div>
+          </div>
+        </div>
+
+        <!-- Analyze Button -->
+        <div id="analyzeArea">
+          <button id="analyzeBtn" class="btn-analyze ${hasKey ? '' : 'btn-need-key'}" onclick="handleAnalyze()">
+            ${hasKey ? '🤖 Analyze My Speech' : '🔑 Add API Key to Get Feedback'}
+          </button>
+          <div class="error-card" id="errorCard"></div>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading-state" id="loadingState">
+          <div class="loading-dots"><span></span><span></span><span></span></div>
+          <div class="loading-text">Coach is reviewing your speech…</div>
+        </div>
+
+        <!-- Coach Feedback -->
+        <div class="coach-section" id="coachSection">
+
+          <!-- Header -->
+          <div class="coach-header">
+            <div class="coach-avatar">🎓</div>
+            <div class="coach-meta">
+              <div class="coach-name">Coach Alex</div>
+              <div class="coach-role">Professional Speaking Coach</div>
+            </div>
+          </div>
+
+          <!-- Feedback Text -->
+          <div class="card">
+            <div class="feedback-text" id="feedbackText"></div>
+          </div>
+
+          <!-- Strengths + Improvements -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px" id="strengthGrid">
+            <div class="card">
+              <div class="section-title">What Worked</div>
+              <div class="strength-list" id="strengthList"></div>
+            </div>
+            <div class="card">
+              <div class="section-title">Level Up</div>
+              <div class="improve-list" id="improveList"></div>
+            </div>
+          </div>
+
+          <!-- Pro Tip -->
+          <div class="pro-tip-card" id="proTipCard" style="display:none">
+            <div class="pro-tip-icon">💡</div>
+            <div>
+              <div class="pro-tip-label">Coach's Pro Tip</div>
+              <div class="pro-tip-text" id="proTipText"></div>
+            </div>
+          </div>
+
+          <!-- Score Dashboard -->
+          <div>
+            <div class="section-title">Your Scorecard</div>
+            <div class="card" id="scorecard">
+              <div class="score-header" style="margin-bottom:18px">
+                <div class="overall-score-badge">
+                  <div class="score-circle">
+                    <div class="score-num" id="overallNum">—</div>
+                    <div class="score-denom">/100</div>
+                  </div>
+                  <div>
+                    <div class="stars" id="starsDisplay">☆☆☆☆☆</div>
+                    <div style="font-size:0.82rem;color:var(--muted);margin-top:2px">Overall</div>
+                  </div>
+                </div>
+              </div>
+              <div class="score-grid" id="scoreGrid"></div>
+            </div>
+          </div>
+
+          <!-- XP / Level -->
+          <div class="xp-section" id="xpSection" style="display:none">
+            <div class="xp-left">
+              <div class="level-badge" id="levelBadge">
+                <div class="level-icon"></div>
+                <div class="level-name"></div>
+              </div>
+              <div class="xp-info">
+                <div class="xp-earned" id="xpEarned">+0 XP</div>
+                <div class="xp-total" id="xpTotal"></div>
+                <div class="xp-bar-wrap"><div class="xp-bar" id="xpBar"></div></div>
+                <div class="xp-next" id="xpNext"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Badges -->
+          <div id="badgesSection">
+            <div class="section-title">Badges</div>
+            <div class="badges-wrap" id="badgesWrap"></div>
+          </div>
+
+          <!-- Actions -->
+          <div class="action-row">
+            <a href="timer.html" class="btn-secondary">🔄 Try Again</a>
+            <a href="index.html" class="btn-primary-action">🎲 New Topic</a>
+          </div>
+
+        </div>
+      `;
+
+      // Responsive strength grid
+      if (window.innerWidth < 480) {
+        document.getElementById('strengthGrid').style.gridTemplateColumns = '1fr';
+      }
+    }
+
+    function escHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function updateAnalyzeBtn() {
+      const btn = document.getElementById('analyzeBtn');
+      if (!btn) return;
+      const hasKey = !!getApiKey();
+      btn.textContent = hasKey ? '🤖 Analyze My Speech' : '🔑 Add API Key to Get Feedback';
+      btn.className = 'btn-analyze ' + (hasKey ? '' : 'btn-need-key');
+    }
+
+    // ── AI Analysis ───────────────────────────────────────────────
+    async function handleAnalyze() {
+      const apiKey = getApiKey();
+      if (!apiKey) {
+        openSettings();
+        return;
+      }
+
+      const analyzeBtn = document.getElementById('analyzeBtn');
+      const loadingState = document.getElementById('loadingState');
+      const coachSection = document.getElementById('coachSection');
+      const errorCard = document.getElementById('errorCard');
+
+      analyzeBtn.disabled = true;
+      loadingState.classList.add('visible');
+      errorCard.classList.remove('visible');
+
+      const prompt = `You are Coach Alex, a world-class presentation and public speaking coach. Evaluate this impromptu speech and provide honest, specific, encouraging coaching.
+
+Topic: "${topic}"
+Speech duration: approximately ${duration} seconds
+Transcript: "${transcript}"
+
+Return ONLY a valid JSON object with this exact structure (no other text, no markdown):
+{
+  "overall_score": <integer 0-100>,
+  "coach_feedback": "<2-3 sentences of warm, specific feedback>",
+  "strengths": ["<specific strength 1>", "<specific strength 2>"],
+  "improvements": ["<specific improvement 1>", "<specific improvement 2>"],
+  "pro_tip": "<one highly actionable tip for the next speech>",
+  "scores": {
+    "clarity": <integer 0-100>,
+    "structure": <integer 0-100>,
+    "confidence": <integer 0-100>,
+    "engagement": <integer 0-100>,
+    "vocabulary": <integer 0-100>,
+    "pacing": <integer 0-100>,
+    "impact": <integer 0-100>
+  }
+}`;
+
+      try {
+        const resp = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+            'content-type': 'application/json',
+            'anthropic-dangerous-direct-browser-access': 'true'
+          },
+          body: JSON.stringify({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 1024,
+            messages: [{ role: 'user', content: prompt }]
+          })
+        });
+
+        if (!resp.ok) {
+          const err = await resp.json().catch(() => ({}));
+          throw new Error(err.error?.message || `API error ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        const raw = data.content[0].text.trim();
+
+        // Parse JSON (strip any accidental markdown fences)
+        const jsonStr = raw.replace(/^```json\s*/i,'').replace(/```\s*$/,'').trim();
+        let result;
+        try {
+          result = JSON.parse(jsonStr);
+        } catch(e) {
+          throw new Error('Could not parse AI response. Please try again.');
+        }
+
+        loadingState.classList.remove('visible');
+        displayResults(result);
+
+      } catch (err) {
+        loadingState.classList.remove('visible');
+        analyzeBtn.disabled = false;
+        errorCard.textContent = '⚠️ ' + err.message;
+        errorCard.classList.add('visible');
+      }
+    }
+
+    function displayResults(result) {
+      const {
+        overall_score: overall = 50,
+        coach_feedback: feedback = '',
+        strengths = [],
+        improvements = [],
+        pro_tip: proTip = '',
+        scores = {}
+      } = result;
+
+      const coachSection = document.getElementById('coachSection');
+      coachSection.classList.add('visible');
+
+      // Typewrite feedback
+      const feedbackEl = document.getElementById('feedbackText');
+      feedbackEl.innerHTML = '<span class="cursor"></span>';
+      typeWrite(feedbackEl, feedback, () => {
+        // After typing, remove cursor
+        const cur = feedbackEl.querySelector('.cursor');
+        if (cur) cur.remove();
+      });
+
+      // Strengths
+      const sl = document.getElementById('strengthList');
+      sl.innerHTML = strengths.map(s =>
+        `<div class="strength-item"><span class="item-icon">✅</span><span>${escHtml(s)}</span></div>`
+      ).join('');
+
+      // Improvements
+      const il = document.getElementById('improveList');
+      il.innerHTML = improvements.map(s =>
+        `<div class="improve-item"><span class="item-icon">📈</span><span>${escHtml(s)}</span></div>`
+      ).join('');
+
+      // Pro tip
+      if (proTip) {
+        document.getElementById('proTipText').textContent = proTip;
+        document.getElementById('proTipCard').style.display = 'flex';
+      }
+
+      // Overall score
+      document.getElementById('overallNum').textContent = overall;
+      document.getElementById('starsDisplay').textContent = starsFromScore(overall);
+
+      // Score bars
+      const SCORE_DIMS = [
+        { key: 'clarity', icon: '🎯', label: 'Clarity' },
+        { key: 'structure', icon: '🏗️', label: 'Structure' },
+        { key: 'confidence', icon: '💪', label: 'Confidence' },
+        { key: 'engagement', icon: '✨', label: 'Engagement' },
+        { key: 'vocabulary', icon: '📖', label: 'Vocabulary' },
+        { key: 'pacing', icon: '⏱️', label: 'Pacing' },
+        { key: 'impact', icon: '🎬', label: 'Hook & Close' },
+      ];
+      const grid = document.getElementById('scoreGrid');
+      grid.innerHTML = SCORE_DIMS.map(d => {
+        const val = scores[d.key] || 0;
+        const colorClass = val >= 80 ? 'high' : val >= 55 ? 'mid' : 'low';
+        return `
+          <div class="score-row">
+            <div class="score-icon">${d.icon}</div>
+            <div class="score-label">${d.label}</div>
+            <div class="score-bar-wrap"><div class="score-bar ${colorClass}" id="bar-${d.key}"></div></div>
+            <div class="score-val">${val}</div>
+          </div>`;
+      }).join('');
+
+      // Animate bars
+      setTimeout(() => {
+        SCORE_DIMS.forEach(d => {
+          const bar = document.getElementById('bar-' + d.key);
+          if (bar) bar.style.width = (scores[d.key] || 0) + '%';
+        });
+      }, 100);
+
+      // XP
+      const earned = calcXP(overall, scores);
+      const newTotal = addXP(earned);
+      const level = getLevel(newTotal);
+      const nextLevel = getNextLevel(newTotal);
+      const xpSection = document.getElementById('xpSection');
+      xpSection.style.display = 'flex';
+
+      document.querySelector('#levelBadge .level-icon').textContent = level.icon;
+      document.querySelector('#levelBadge .level-name').textContent = level.name;
+      document.getElementById('xpEarned').textContent = '+' + earned + ' XP';
+      document.getElementById('xpTotal').textContent = newTotal + ' total XP';
+
+      if (nextLevel) {
+        const progress = ((newTotal - level.threshold) / (nextLevel.threshold - level.threshold)) * 100;
+        document.getElementById('xpNext').textContent = (nextLevel.threshold - newTotal) + ' XP to ' + nextLevel.name;
+        setTimeout(() => { document.getElementById('xpBar').style.width = progress + '%'; }, 200);
+      } else {
+        document.getElementById('xpNext').textContent = 'Max level reached! 🌟';
+        setTimeout(() => { document.getElementById('xpBar').style.width = '100%'; }, 200);
+      }
+
+      // Badges
+      const newBadges = checkBadges(scores, overall);
+      const allEarned = getEarnedBadges();
+      const badgesWrap = document.getElementById('badgesWrap');
+
+      if (allEarned.length === 0) {
+        badgesWrap.innerHTML = '<span class="no-badges-yet">Keep speaking to earn badges!</span>';
+      } else {
+        badgesWrap.innerHTML = allEarned.map((id, i) => {
+          const badge = ALL_BADGES.find(b => b.id === id);
+          if (!badge) return '';
+          const isNew = newBadges.includes(id);
+          return `
+            <div class="badge ${isNew ? 'new' : ''}" style="${isNew ? 'animation-delay:' + (i * 0.1) + 's' : ''}">
+              <span class="badge-icon">${badge.icon}</span>
+              <span class="badge-name">${badge.name}</span>
+              ${isNew ? '<span class="badge-new-tag">NEW!</span>' : ''}
+            </div>`;
+        }).join('');
+      }
+
+      // Scroll to coach section
+      coachSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    // Typewriter effect
+    function typeWrite(el, text, onDone) {
+      let i = 0;
+      const cursor = el.querySelector('.cursor');
+      function next() {
+        if (i < text.length) {
+          const node = document.createTextNode(text[i++]);
+          el.insertBefore(node, cursor);
+          setTimeout(next, 18);
+        } else {
+          if (onDone) onDone();
+        }
+      }
+      next();
+    }
+
+    // ── Init ──────────────────────────────────────────────────────
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Speech Timer - Impromptu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=DM+Serif+Display&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F7F3E8;
+      --text: #1A3C34;
+      --accent: #C4B5E8;
+      --accent-dark: #9B87CC;
+      --accent-bg: rgba(196, 181, 232, 0.2);
+      --red: #E85D5D;
+      --red-bg: rgba(232, 93, 93, 0.12);
+      --muted: rgba(26, 60, 52, 0.45);
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ── Nav ── */
+    .nav-bar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      flex-shrink: 0;
+    }
+    .nav-back {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      color: var(--text);
+      text-decoration: none;
+      display: flex; align-items: center; gap: 6px;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    .nav-back:hover { opacity: 1; }
+    .brand-badge {
+      display: flex; align-items: center; gap: 8px;
+      font-family: 'Caveat', cursive;
+      font-size: 1.05rem;
+      color: var(--text); opacity: 0.55;
+      pointer-events: none;
+    }
+    .brand-dot {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+    }
+
+    /* ── Page ── */
+    .page-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 24px 32px;
+      gap: 20px;
+      width: 100%;
+      max-width: 600px;
+    }
+
+    /* ── Topic Display ── */
+    .topic-label {
+      font-family: 'Caveat', cursive;
+      font-size: 1.1rem;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .topic-text {
+      font-family: 'DM Serif Display', serif;
+      font-size: 1.7rem;
+      color: var(--text);
+      text-align: center;
+      max-width: 400px;
+      line-height: 1.3;
+    }
+
+    /* ── Timer Ring ── */
+    .timer-ring-wrap {
+      position: relative;
+      width: 320px; height: 320px;
+      flex-shrink: 0;
+    }
+    .timer-ring-wrap svg {
+      position: absolute; top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+    .timer-inner {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex; flex-direction: column;
+      align-items: center; gap: 14px;
+    }
+    .time-display {
+      font-family: 'DM Serif Display', serif;
+      font-size: 4.8rem;
+      color: var(--text);
+      line-height: 1;
+      cursor: default;
+      user-select: none;
+    }
+    .time-adjust {
+      display: flex; gap: 8px;
+    }
+    .btn-adjust {
+      background: transparent;
+      border: 1.5px solid var(--text);
+      color: var(--text);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-adjust:hover { background: rgba(26,60,52,0.07); }
+    .btn-adjust:disabled { opacity: 0.35; cursor: default; }
+
+    /* ── Timer Controls ── */
+    .timer-controls {
+      display: flex; gap: 16px; align-items: center;
+    }
+    .btn-icon {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      border: 1.5px solid var(--text);
+      background: transparent;
+      color: var(--text);
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, transform 0.12s;
+    }
+    .btn-icon:hover { background: rgba(26,60,52,0.07); transform: scale(1.05); }
+    .btn-icon.btn-play {
+      width: 58px; height: 58px;
+      background: var(--accent);
+      border-color: transparent;
+      font-size: 1.4rem;
+    }
+    .btn-icon.btn-play:hover { background: var(--accent-dark); }
+
+    /* ── Divider ── */
+    .section-divider {
+      width: 100%;
+      border: none;
+      border-top: 1px solid rgba(26,60,52,0.1);
+      margin: 4px 0;
+    }
+
+    /* ── Recording Section ── */
+    .record-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .record-row {
+      display: flex; align-items: center; gap: 14px;
+    }
+    .btn-record {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 24px;
+      border-radius: 100px;
+      border: 1.5px solid var(--text);
+      background: transparent;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem; font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-record:hover { background: rgba(26,60,52,0.06); }
+    .btn-record.recording {
+      background: var(--red-bg);
+      border-color: var(--red);
+      color: var(--red);
+      animation: recPulse 1.5s ease-in-out infinite;
+    }
+    @keyframes recPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(232,93,93,0.3); }
+      50% { box-shadow: 0 0 0 8px rgba(232,93,93,0); }
+    }
+    .mic-icon { font-size: 1.1rem; }
+    .rec-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      animation: blink 1s step-end infinite;
+      display: none;
+    }
+    .btn-record.recording .rec-dot { display: block; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+    .record-time {
+      font-family: 'Caveat', cursive;
+      font-size: 1.3rem;
+      color: var(--red);
+      min-width: 52px;
+      text-align: center;
+      display: none;
+    }
+    .record-time.visible { display: block; }
+
+    /* ── Waveform ── */
+    .waveform {
+      display: none;
+      align-items: center;
+      gap: 3px;
+      height: 36px;
+    }
+    .waveform.visible { display: flex; }
+    .wave-bar {
+      width: 4px;
+      border-radius: 2px;
+      background: var(--accent-dark);
+      height: 6px;
+      animation: waveAnim 0.8s ease-in-out infinite;
+    }
+    .wave-bar:nth-child(1) { animation-delay: 0.0s; }
+    .wave-bar:nth-child(2) { animation-delay: 0.1s; }
+    .wave-bar:nth-child(3) { animation-delay: 0.2s; }
+    .wave-bar:nth-child(4) { animation-delay: 0.0s; }
+    .wave-bar:nth-child(5) { animation-delay: 0.15s; }
+    .wave-bar:nth-child(6) { animation-delay: 0.05s; }
+    .wave-bar:nth-child(7) { animation-delay: 0.25s; }
+    @keyframes waveAnim {
+      0%, 100% { height: 6px; opacity: 0.5; }
+      50% { height: 28px; opacity: 1; }
+    }
+
+    /* ── Transcript ── */
+    .transcript-section {
+      width: 100%;
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .transcript-section.visible { display: flex; }
+    .transcript-card {
+      background: white;
+      border: 1.5px solid rgba(26,60,52,0.12);
+      border-radius: 16px;
+      padding: 16px 20px;
+      width: 100%;
+    }
+    .transcript-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .transcript-title {
+      font-family: 'Caveat', cursive;
+      font-size: 1.1rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .transcript-edit-hint {
+      font-size: 0.78rem;
+      color: var(--muted);
+      opacity: 0.7;
+    }
+    .transcript-text {
+      font-family: 'Inter', sans-serif;
+      font-size: 0.95rem;
+      line-height: 1.65;
+      color: var(--text);
+      min-height: 60px;
+      outline: none;
+      border: none;
+      width: 100%;
+      resize: none;
+      background: transparent;
+      font-family: inherit;
+    }
+    .transcript-text:focus {
+      outline: none;
+    }
+    .transcript-placeholder {
+      color: var(--muted);
+      font-style: italic;
+    }
+
+    .no-transcript-note {
+      font-family: 'Caveat', cursive;
+      font-size: 1rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    /* ── Feedback Button ── */
+    .btn-feedback {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%;
+      padding: 14px;
+      border-radius: 100px;
+      background: var(--text);
+      color: var(--bg);
+      border: none;
+      font-family: 'Inter', sans-serif;
+      font-size: 1rem; font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.18s, transform 0.14s;
+    }
+    .btn-feedback:hover { background: #2a5a4a; transform: translateY(-1px); }
+    .btn-feedback:active { transform: translateY(0); }
+
+    /* ── Timer done overlay ── */
+    .timer-done-flash {
+      position: fixed; inset: 0;
+      background: var(--accent);
+      opacity: 0;
+      pointer-events: none;
+      z-index: 200;
+    }
+    .timer-done-flash.flash {
+      animation: flashAnim 0.6s ease-out forwards;
+    }
+    @keyframes flashAnim {
+      0% { opacity: 0.7; }
+      100% { opacity: 0; }
+    }
+
+    /* ── Responsive ── */
+    @media (max-width: 480px) {
+      .timer-ring-wrap { width: 260px; height: 260px; }
+      .time-display { font-size: 3.8rem; }
+      .topic-text { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="nav-bar">
+    <a href="index.html" class="nav-back">← Back</a>
+    <div class="brand-badge">
+      Baby steps to the mic
+      <div class="brand-dot"></div>
+    </div>
+  </div>
+
+  <div class="page-content">
+
+    <!-- Topic -->
+    <div class="topic-label">Your Topic</div>
+    <div class="topic-text" id="topicDisplay">Impromptu Speaking</div>
+
+    <!-- Timer Ring -->
+    <div class="timer-ring-wrap">
+      <svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- Track -->
+        <circle cx="160" cy="160" r="140" stroke="#E5DDF5" stroke-width="9"/>
+        <!-- Progress -->
+        <circle id="progressRing"
+          cx="160" cy="160" r="140"
+          stroke="#C4B5E8" stroke-width="9"
+          stroke-linecap="round"
+          stroke-dasharray="879.65"
+          stroke-dashoffset="0"
+          transform="rotate(-90 160 160)"/>
+      </svg>
+      <div class="timer-inner">
+        <div class="time-display" id="timeDisplay">1:00</div>
+        <div class="time-adjust">
+          <button class="btn-adjust" id="minusBtn" onclick="adjustTime(-30)">-0:30</button>
+          <button class="btn-adjust" id="plusBtn" onclick="adjustTime(30)">+0:30</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timer Controls -->
+    <div class="timer-controls">
+      <button class="btn-icon" id="resetBtn" title="Reset" onclick="doReset()">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3.5 10a6.5 6.5 0 1 0 1.1-3.6"/>
+          <polyline points="3.5 3.5 3.5 7 7 7"/>
+        </svg>
+      </button>
+      <button class="btn-icon btn-play" id="playBtn" title="Start" onclick="togglePlay()">
+        <svg id="playIcon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+          <polygon points="6,4 16,10 6,16"/>
+        </svg>
+        <svg id="pauseIcon" width="20" height="20" viewBox="0 0 20 20" fill="currentColor" style="display:none">
+          <rect x="5" y="4" width="4" height="12" rx="1"/>
+          <rect x="11" y="4" width="4" height="12" rx="1"/>
+        </svg>
+      </button>
+    </div>
+
+    <hr class="section-divider">
+
+    <!-- ── Recording Section (NEW) ── -->
+    <div class="record-section">
+      <div class="record-row">
+        <button class="btn-record" id="recordBtn" onclick="toggleRecord()">
+          <span class="mic-icon">🎤</span>
+          <span id="recordBtnText">Record Speech</span>
+          <span class="rec-dot"></span>
+        </button>
+        <span class="record-time" id="recordTime">0:00</span>
+      </div>
+
+      <div class="waveform" id="waveform">
+        <div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div><div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
+    </div>
+
+    <!-- ── Transcript (appears after recording stops) ── -->
+    <div class="transcript-section" id="transcriptSection">
+      <div class="transcript-card">
+        <div class="transcript-header">
+          <span class="transcript-title">Your Speech Transcript</span>
+          <span class="transcript-edit-hint">click to edit</span>
+        </div>
+        <textarea
+          class="transcript-text"
+          id="transcriptText"
+          placeholder="Your transcript will appear here. If transcription isn't available in your browser, type your speech here..."
+          rows="5"
+        ></textarea>
+      </div>
+      <div class="no-transcript-note" id="noTranscriptNote" style="display:none">
+        Transcription not available in this browser — type your speech above to get AI feedback.
+      </div>
+      <button class="btn-feedback" id="feedbackBtn" onclick="goToFeedback()">
+        🤖 Get AI Coaching Feedback →
+      </button>
+    </div>
+
+  </div>
+
+  <!-- Flash overlay on timer done -->
+  <div class="timer-done-flash" id="timerFlash"></div>
+
+  <script>
+    // ── Read topic from URL or sessionStorage ───────────────────
+    const urlParams = new URLSearchParams(window.location.search);
+    const topicFromUrl = urlParams.get('topic') || sessionStorage.getItem('speechTopic') || '';
+    if (topicFromUrl) {
+      document.getElementById('topicDisplay').textContent = topicFromUrl;
+      sessionStorage.setItem('speechTopic', topicFromUrl);
+    }
+
+    // ── Audio ───────────────────────────────────────────────────
+    let audioCtx = null;
+    function ensureAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
+    function playClick() {
+      ensureAudio();
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine'; osc.frequency.setValueAtTime(800, now);
+      gain.gain.setValueAtTime(0.08, now); gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.07);
+    }
+    function playAlarm() {
+      ensureAudio();
+      const now = audioCtx.currentTime;
+      [[0,880],[0.25,1100],[0.5,880],[0.75,1100]].forEach(([t, freq]) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now + t);
+        gain.gain.setValueAtTime(0.2, now + t); gain.gain.exponentialRampToValueAtTime(0.001, now + t + 0.2);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(now + t); osc.stop(now + t + 0.22);
+      });
+    }
+
+    // ── Timer State ─────────────────────────────────────────────
+    const CIRCUMFERENCE = 879.65; // 2π × 140
+    let totalSeconds = 60;
+    let remaining = 60;
+    let isRunning = false;
+    let intervalId = null;
+
+    const timeDisplay = document.getElementById('timeDisplay');
+    const progressRing = document.getElementById('progressRing');
+    const playIcon = document.getElementById('playIcon');
+    const pauseIcon = document.getElementById('pauseIcon');
+
+    function formatTime(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return m + ':' + String(sec).padStart(2, '0');
+    }
+
+    function updateDisplay() {
+      timeDisplay.textContent = formatTime(remaining);
+      const progress = remaining / totalSeconds;
+      progressRing.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+      // Color shifts red as time runs low
+      if (remaining <= 10) {
+        progressRing.style.stroke = '#E85D5D';
+      } else if (remaining <= 30) {
+        progressRing.style.stroke = '#D4A5A5';
+      } else {
+        progressRing.style.stroke = '#C4B5E8';
+      }
+    }
+
+    function togglePlay() {
+      ensureAudio();
+      playClick();
+      if (isRunning) doPause(); else doPlay();
+    }
+
+    function doPlay() {
+      if (remaining <= 0) return;
+      isRunning = true;
+      playIcon.style.display = 'none';
+      pauseIcon.style.display = 'block';
+      document.getElementById('minusBtn').disabled = true;
+      document.getElementById('plusBtn').disabled = true;
+      intervalId = setInterval(() => {
+        remaining--;
+        updateDisplay();
+        if (remaining <= 0) {
+          clearInterval(intervalId);
+          isRunning = false;
+          playIcon.style.display = 'block';
+          pauseIcon.style.display = 'none';
+          document.getElementById('minusBtn').disabled = false;
+          document.getElementById('plusBtn').disabled = false;
+          playAlarm();
+          // Flash
+          const flash = document.getElementById('timerFlash');
+          flash.classList.add('flash');
+          flash.addEventListener('animationend', () => flash.classList.remove('flash'), { once: true });
+          // Auto-stop recording if active
+          if (isRecording) stopRecording();
+        }
+      }, 1000);
+    }
+
+    function doPause() {
+      isRunning = false;
+      clearInterval(intervalId);
+      playIcon.style.display = 'block';
+      pauseIcon.style.display = 'none';
+      document.getElementById('minusBtn').disabled = false;
+      document.getElementById('plusBtn').disabled = false;
+    }
+
+    function doReset() {
+      if (isRunning) doPause();
+      remaining = totalSeconds;
+      updateDisplay();
+    }
+
+    function adjustTime(delta) {
+      if (isRunning) return;
+      const newTotal = Math.max(30, Math.min(5940, totalSeconds + delta));
+      totalSeconds = newTotal;
+      remaining = newTotal;
+      updateDisplay();
+    }
+
+    // ── Recording State ──────────────────────────────────────────
+    let isRecording = false;
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recognitionActive = false;
+    let recognition = null;
+    let finalTranscript = '';
+    let interimTranscript = '';
+    let recordStartTime = null;
+    let recordTimerInterval = null;
+    let speechRecognitionSupported = false;
+
+    // Check speech recognition support
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      speechRecognitionSupported = true;
+    }
+
+    function formatRecordTime(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return m + ':' + String(sec).padStart(2, '0');
+    }
+
+    async function toggleRecord() {
+      ensureAudio();
+      if (isRecording) {
+        stopRecording();
+      } else {
+        await startRecording();
+      }
+    }
+
+    async function startRecording() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // MediaRecorder for audio storage
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
+        mediaRecorder.start();
+
+        // Speech recognition for transcript
+        finalTranscript = '';
+        interimTranscript = '';
+        if (speechRecognitionSupported) {
+          const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+          recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'en-US';
+
+          recognition.onresult = (event) => {
+            interimTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript + ' ';
+              } else {
+                interimTranscript += event.results[i][0].transcript;
+              }
+            }
+            const display = (finalTranscript + interimTranscript).trim();
+            document.getElementById('transcriptText').value = display;
+          };
+
+          recognition.onerror = (e) => {
+            console.log('Recognition error:', e.error);
+          };
+
+          recognition.onend = () => {
+            // Restart if still recording (handles timeout)
+            if (isRecording) {
+              try { recognition.start(); } catch(e) {}
+            }
+          };
+
+          recognition.start();
+          recognitionActive = true;
+        }
+
+        // UI updates
+        isRecording = true;
+        recordStartTime = Date.now();
+        const btn = document.getElementById('recordBtn');
+        btn.classList.add('recording');
+        document.getElementById('recordBtnText').textContent = 'Stop Recording';
+        document.getElementById('recordTime').classList.add('visible');
+        document.getElementById('waveform').classList.add('visible');
+
+        recordTimerInterval = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
+          document.getElementById('recordTime').textContent = formatRecordTime(elapsed);
+        }, 500);
+
+      } catch (err) {
+        alert('Microphone access is required to record your speech. Please allow microphone access and try again.');
+        console.error('Recording error:', err);
+      }
+    }
+
+    function stopRecording() {
+      if (!isRecording) return;
+      isRecording = false;
+
+      // Stop recognition
+      if (recognition && recognitionActive) {
+        recognitionActive = false;
+        try { recognition.stop(); } catch(e) {}
+      }
+
+      // Stop media recorder
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(audioChunks, { type: 'audio/webm' });
+          const url = URL.createObjectURL(blob);
+          sessionStorage.setItem('recordingUrl', url);
+        };
+      }
+
+      // UI
+      const btn = document.getElementById('recordBtn');
+      btn.classList.remove('recording');
+      document.getElementById('recordBtnText').textContent = 'Record Speech';
+      document.getElementById('recordTime').classList.remove('visible');
+      document.getElementById('waveform').classList.remove('visible');
+
+      clearInterval(recordTimerInterval);
+      const duration = Math.floor((Date.now() - recordStartTime) / 1000);
+
+      // Show transcript section
+      const transcriptSection = document.getElementById('transcriptSection');
+      transcriptSection.classList.add('visible');
+
+      const transcript = document.getElementById('transcriptText').value.trim();
+      if (!transcript && !speechRecognitionSupported) {
+        document.getElementById('noTranscriptNote').style.display = 'block';
+      }
+
+      // Save to session
+      sessionStorage.setItem('recordingDuration', duration);
+      sessionStorage.setItem('speechTopic', topicFromUrl || document.getElementById('topicDisplay').textContent);
+    }
+
+    function goToFeedback() {
+      const transcript = document.getElementById('transcriptText').value.trim();
+      const topic = topicFromUrl || document.getElementById('topicDisplay').textContent;
+      const duration = sessionStorage.getItem('recordingDuration') || '0';
+
+      if (!transcript) {
+        document.getElementById('transcriptText').focus();
+        document.getElementById('transcriptText').placeholder = '⬆ Please enter or dictate your speech transcript first...';
+        return;
+      }
+
+      sessionStorage.setItem('speechTranscript', transcript);
+      sessionStorage.setItem('speechTopic', topic);
+      sessionStorage.setItem('speechDuration', duration);
+      window.location.href = 'feedback.html';
+    }
+
+    updateDisplay();
+  </script>
+</body>
+</html>
