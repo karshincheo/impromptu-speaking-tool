@@ -15,3 +15,7 @@ open index.html   # or just double-click it
 ```
 
 Built as a quick utility for practicing public speaking with friends — plain HTML/CSS/JS, works offline.
+
+---
+
+*A weekend build. The serious engineering lives at [kalshi-trading](https://github.com/karshincheo/kalshi-trading) and [PolyClaw](https://github.com/karshincheo/PolyClaw) — more on my [profile](https://github.com/karshincheo).*
